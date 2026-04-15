@@ -1,5 +1,7 @@
 # weft
 
+> The weft is the thread that actually gets carried through the loom. The warp is the structure, the weft is the work.
+
 [![Package Version](https://img.shields.io/hexpm/v/weft)](https://hex.pm/packages/weft)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/weft/)
 
