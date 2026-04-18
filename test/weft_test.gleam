@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/erlang/process
+import gleam/json
 import gleam/list
 import gleam/option
 import gleam/otp/static_supervisor
@@ -186,6 +187,12 @@ pub fn migrate_down_table_doesnt_exist_test() {
   let connection = setup_migrations()
   let assert Ok(_) = weft.migrate_down(connection, 0)
   let assert Ok(0) = weft.current_version(connection)
+}
+
+pub fn enqueue_succeeeds_test() {
+  let connection = setup_migrations()
+  let assert Ok(_) = weft.migrate_up(connection, 1)
+  let assert Ok(_) = weft.enqueue(connection, "worker", json.object([]))
 }
 
 pub fn setup_migrations() {

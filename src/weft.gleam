@@ -2,13 +2,52 @@ import gleam/bool
 import gleam/dynamic/decode
 import gleam/erlang/application
 import gleam/int
-import gleam/io
+import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
 import pog
 import simplifile
+
+pub type EnqueueError {
+  InsertFailed(pog.QueryError)
+  UnexpectedEmptyResult
+}
+
+pub fn enqueue(
+  connection: pog.Connection,
+  worker: String,
+  args: json.Json,
+) -> Result(Int, EnqueueError) {
+  let query =
+    pog.query(
+      "
+    INSERT INTO weft_jobs (worker, args)
+    VALUES ($1, $2::jsonb)
+    RETURNING id
+    ",
+    )
+
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(id)
+  }
+
+  query
+  |> pog.returning(decoder)
+  |> pog.parameter(pog.text(worker))
+  |> pog.parameter(pog.text(json.to_string(args)))
+  |> pog.execute(connection)
+  |> result.map_error(InsertFailed)
+  |> result.try(fn(returning) {
+    returning.rows
+    |> list.first()
+    |> result.replace_error(UnexpectedEmptyResult)
+  })
+}
+
+// Migrations
 
 pub type MigrateError {
   DatabaseError(pog.QueryError)
@@ -21,10 +60,6 @@ pub type LoadError {
   InvalidFilename(name: String)
   InvalidMigrationFormat(filename: String, reason: String)
   FileReadError(filename: String, reason: String)
-}
-
-pub fn main() -> Nil {
-  io.println("Hello from weft!")
 }
 
 pub type Migration {
@@ -216,7 +251,7 @@ pub fn apply_down(
         True -> {
           let query_string =
             "COMMENT ON TABLE weft_jobs IS '"
-            <> int.to_string(migration.version)
+            <> int.to_string(migration.version - 1)
             <> "';"
 
           query_string
